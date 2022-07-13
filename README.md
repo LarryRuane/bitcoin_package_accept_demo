@@ -8,6 +8,9 @@ acceptance algorithm.
 This repository grew out of my review of Bitcoin Core
 [PR 24152](https://github.com/bitcoin/bitcoin/pull/24152).
 
+As an alternative to cloning this repository, you can run the
+demo at [this python playground](https://code.sololearn.com/c3Z6xssy8km5)
+
 A package is a topologically-sorted list of transactions (a
 ([DAG](https://en.wikipedia.org/wiki/Directed_acyclic_graph)),
 each transaction having an absolute fee, size (actually, virtual size,
