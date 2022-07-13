@@ -1,7 +1,7 @@
 #!/bin/env python3
 #
 # Given a package of transactions, in the form of an arbitrary DAG, and a
-# minimum fee rate, calculate a subset package that satisfies the 
+# minimum fee rate, calculate a subset package that satisfies the fee requirement.
 
 test_cases = (
     (
