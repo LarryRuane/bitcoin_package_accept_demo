@@ -5,12 +5,12 @@
 
 test_cases = (
     (
-        "Simplest possible graph, a single node",
+        "Simplest possible graph, a single tx",
         {
             'a': [],
         },
         [   # Each case is a description, (fee,size) assignments, and min fee rates:
-            ("trivial case, a single node, feerate is individually calculated",
+            ("trivial case, a single tx, feerate is individually calculated",
             {'a':(40,10)},
             [5, 4, 1]),
         ]
@@ -132,25 +132,35 @@ test_cases = (
     ),
 )
 
+class fee_sz:
+    def __init__(self, sats: int, size: int):
+        self.sats = sats
+        self.size = size
+    def __add__(self, v):
+        return fee_sz(self.sats + v.sats, self.size + v.size)
+    def __repr__(self):
+        return f'fee_sz(sats={self.sats}, size={self.size})'
+    def feerate(self):
+        return self.sats / self.size
+
 # return a subset of the transaction package that passes the fee rate test
 def filter_package(graph, fees_sizes, min_feerate):
     result = set()
     # ancestor_fees_sizes includes the transaction itself plus its ancestors
-    ancestor_fees_sizes = {}
+    ancestor_fee_szs = {}
     progress = True
     while (progress):
         progress = False
         for txid in graph:
             # no need to evaluate already-accepted tx
             if txid in result: continue
-            (ancestor_fee, ancestor_size) = fees_sizes[txid]
+            ancestor_fee_sz = fees_sizes[txid]
             # add the fees and sizes of our parents' ancestors' fees and sizes
             for parent in graph[txid]:
                 if not parent in result:
-                    ancestor_fee += ancestor_fees_sizes[parent][0]
-                    ancestor_size += ancestor_fees_sizes[parent][1]
-            ancestor_fees_sizes[txid] = (ancestor_fee, ancestor_size)
-            if ancestor_fee / ancestor_size >= min_feerate:
+                    ancestor_fee_sz += ancestor_fee_szs[parent]
+            ancestor_fee_szs[txid] = ancestor_fee_sz
+            if ancestor_fee_sz.feerate() >= min_feerate:
                 # feerate is good enough, move this tx and its ancestors to result
                 todo = [txid]
                 while len(todo) > 0:
@@ -174,19 +184,22 @@ def test_package():
         for sub_case in sub_cases:
             description = sub_case[0]
             fees_sizes = sub_case[1]
-            feerates = sub_case[2]
+            min_feerates = sub_case[2]
+
+            fee_szs = {}
+            for tx, fs in fees_sizes.items():
+                fee_szs[tx] = fee_sz(fs[0], fs[1])
+
             print()
             print(description)
             print(fees_sizes)
-            for min_feerate in feerates:
-                result = filter_package(graph, fees_sizes, min_feerate)
-                total_fee = 0
-                total_size = 0
+            for min_feerate in min_feerates:
+                result = filter_package(graph, fee_szs, min_feerate)
+                total = fee_sz(0, 0)
                 for txid in result:
-                    total_fee += fees_sizes[txid][0]
-                    total_size += fees_sizes[txid][1]
-                actual_rate = 'actual_rate={:.2f}'.format(total_fee / total_size if total_size > 0 else 0)
-                print('  ', f'{result=} {min_feerate=} {total_fee=} {total_size=}', actual_rate)
+                    total += fee_szs[txid]
+                actual_rate = 'actual_rate={:.2f}'.format(total.feerate() if total.size > 0 else 0)
+                print('  ', f'{result=} {min_feerate=} {total=}', actual_rate)
 
 
 if __name__ == '__main__':
